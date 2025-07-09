@@ -8,20 +8,31 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const MAX_CLIENTS = 1000;
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Use dynamic CORS origin from env or fallback to localhost
 const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
 
-// PostgreSQL connection pool config
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'smartbroadband',
-  port: process.env.DB_PORT || 5432,
-});
+// PostgreSQL connection pool config with SSL conditional
+const pool = new Pool(
+  isProduction
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'smartbroadband',
+        port: process.env.DB_PORT || 5432,
+      }
+);
 
 // Connect and initialize DB
 pool.connect((err, client, release) => {
@@ -34,7 +45,7 @@ pool.connect((err, client, release) => {
   }
 });
 
-// Create clients table if not exists (Postgres syntax)
+// Create clients table if not exists
 function initializeDatabase(client, release) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS clients (
@@ -82,7 +93,7 @@ app.get('/api/clients', async (req, res) => {
       data: dataResult.rows,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-      totalClients: total
+      totalClients: total,
     });
   } catch (err) {
     console.error('Error fetching clients:', err);
@@ -95,7 +106,7 @@ app.post('/api/clients', async (req, res) => {
   const {
     full_name, email, phone, location,
     starlink_type, price, serial_number,
-    supporter, has_bonus
+    supporter, has_bonus,
   } = req.body;
 
   if (!full_name || !email || !phone || !location || !starlink_type || price == null) {
@@ -122,12 +133,11 @@ app.post('/api/clients', async (req, res) => {
     const insertValues = [
       full_name, email, phone, location,
       starlink_type, price, serial_number || null,
-      supporter || null, has_bonus || false
+      supporter || null, has_bonus || false,
     ];
 
     const result = await pool.query(insertQuery, insertValues);
     res.status(201).json({ id: result.rows[0].id, message: 'Client created successfully' });
-
   } catch (err) {
     console.error('Error inserting client:', err);
     res.status(500).json({ error: 'Failed to create client' });
@@ -140,7 +150,7 @@ app.put('/api/clients/:id', async (req, res) => {
   const {
     full_name, email, phone, location,
     starlink_type, price, serial_number,
-    supporter, has_bonus
+    supporter, has_bonus,
   } = req.body;
 
   if (!full_name || !email || !phone || !location || !starlink_type || price == null) {
@@ -159,7 +169,7 @@ app.put('/api/clients/:id', async (req, res) => {
     const updateValues = [
       full_name, email, phone, location,
       starlink_type, price, serial_number || null,
-      supporter || null, has_bonus || false, id
+      supporter || null, has_bonus || false, id,
     ];
 
     const result = await pool.query(updateQuery, updateValues);
@@ -169,7 +179,6 @@ app.put('/api/clients/:id', async (req, res) => {
     }
 
     res.json({ message: 'Client updated successfully' });
-
   } catch (err) {
     console.error('Error updating client:', err);
     res.status(500).json({ error: 'Failed to update client' });
@@ -188,7 +197,6 @@ app.delete('/api/clients/:id', async (req, res) => {
     }
 
     res.json({ message: 'Client deleted successfully' });
-
   } catch (err) {
     console.error('Error deleting client:', err);
     res.status(500).json({ error: 'Failed to delete client' });
