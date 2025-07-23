@@ -11,7 +11,7 @@ export default function Smart() {
     email: '',
     phone: '',
     location: '',
-    starlink_type: 'Starlink Mini',
+    service_type: 'Starlink Mini', // renamed here
     price: '',
     serial_number: '',
     supporter: '',
@@ -34,7 +34,9 @@ export default function Smart() {
   // Ref for detecting clicks outside notifications panel
   const notifRef = useRef(null);
 
-  const showSerial = form.starlink_type === 'Starlink Mini' || form.starlink_type === 'Starlink Standard';
+  // Show serial number input only for these service types
+  const showSerial =
+    form.service_type === 'Starlink Mini' || form.service_type === 'Starlink Standard';
 
   // Fetch clients when currentPage changes or when view switches to list
   useEffect(() => {
@@ -107,7 +109,7 @@ export default function Smart() {
       email: client.email,
       phone: client.phone,
       location: client.location,
-      starlink_type: client.starlink_type,
+      service_type: client.service_type, // renamed here
       price: client.price,
       serial_number: client.serial_number || '',
       supporter: client.supporter || '',
@@ -148,17 +150,10 @@ export default function Smart() {
     e.preventDefault();
     setError('');
 
-    if (
-      !form.full_name ||
-      !form.email ||
-      !form.phone ||
-      !form.location ||
-      !form.starlink_type ||
-      form.price === ''
-    ) {
-      return setError('Please fill all required fields');
-    }
-    if (isNaN(form.price) || Number(form.price) < 0) {
+    // No required field validation: all fields optional
+
+    // Only validate price if provided
+    if (form.price !== '' && (isNaN(form.price) || Number(form.price) < 0)) {
       return setError('Price must be a non-negative number');
     }
 
@@ -184,7 +179,7 @@ export default function Smart() {
         email: '',
         phone: '',
         location: '',
-        starlink_type: 'Starlink Mini',
+        service_type: 'Starlink Mini', // reset to default renamed field
         price: '',
         serial_number: '',
         supporter: '',
@@ -214,7 +209,7 @@ export default function Smart() {
         email: '',
         phone: '',
         location: '',
-        starlink_type: 'Starlink Mini',
+        service_type: 'Starlink Mini', // reset default value
         price: '',
         serial_number: '',
         supporter: '',
@@ -226,8 +221,8 @@ export default function Smart() {
   return (
     <div className="container" style={{ position: 'relative' }}>
       {/* Notification Button */}
-      <div 
-        ref={notifRef} 
+      <div
+        ref={notifRef}
         style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000, cursor: 'pointer' }}
       >
         <button
@@ -318,67 +313,62 @@ export default function Smart() {
         {view === 'form' && (
           <form className="left-form" onSubmit={handleSubmit}>
             <label>
-              Full Name *
+              Full Name
               <input
                 type="text"
                 name="full_name"
                 value={form.full_name}
                 onChange={handleChange}
-                required
               />
             </label>
             <label>
-              Email *
+              Email
               <input
                 type="email"
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                required
               />
             </label>
             <label>
-              Phone *
+              Phone
               <input
                 type="text"
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
-                required
               />
             </label>
             <label>
-              Location *
+              Location
               <input
                 type="text"
                 name="location"
                 value={form.location}
                 onChange={handleChange}
-                required
               />
             </label>
             <label>
-              Starlink Type *
-              <select
-                name="starlink_type"
-                value={form.starlink_type}
-                onChange={handleChange}
-                required
-              >
-                <option>Starlink Mini</option>
-                <option>Starlink Standard</option>
-                <option>Starlink Premium</option>
-              </select>
+             <select
+  name="service_type"
+  value={form.service_type}
+  onChange={handleChange}
+>
+  <option value="Starlink Mini">Starlink Mini</option>
+  <option value="Starlink Standard">Starlink Standard</option>
+  <option value="4G">4G</option>
+  <option value="GPS">GPS</option>
+</select>
+
             </label>
             <label>
-              Price *
+              Price
               <input
                 type="number"
                 step="0.01"
                 name="price"
                 value={form.price}
                 onChange={handleChange}
-                required
               />
             </label>
             {showSerial && (
@@ -436,7 +426,7 @@ export default function Smart() {
                       <th>Email</th>
                       <th>Phone</th>
                       <th>Location</th>
-                      <th>Type</th>
+                      <th>Service Type</th> {/* renamed header */}
                       <th>Price</th>
                       <th>Serial #</th>
                       <th>Supporter</th>
@@ -452,13 +442,13 @@ export default function Smart() {
                         </td>
                       </tr>
                     ) : (
-                      clients.map(client => (
+                      clients.map((client) => (
                         <tr key={client.id}>
                           <td>{client.full_name}</td>
                           <td>{client.email}</td>
                           <td>{client.phone}</td>
                           <td>{client.location}</td>
-                          <td>{client.starlink_type}</td>
+                          <td>{client.service_type}</td> {/* renamed here */}
                           <td>{Number(client.price).toFixed(2)}</td>
                           <td>{client.serial_number || ''}</td>
                           <td>{client.supporter || ''}</td>
@@ -486,7 +476,7 @@ export default function Smart() {
                 {totalPages > 1 && (
                   <div className="pagination">
                     <button
-                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                       disabled={currentPage === 1}
                     >
                       Previous
@@ -495,7 +485,7 @@ export default function Smart() {
                       Page {currentPage} of {totalPages}
                     </span>
                     <button
-                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                       disabled={currentPage === totalPages}
                     >
                       Next

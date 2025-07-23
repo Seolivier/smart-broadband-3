@@ -10,20 +10,16 @@ const MAX_CLIENTS = 1000;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Use dynamic CORS origin from env or fallback to localhost
 const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
-
 app.use(express.json());
 
-// PostgreSQL connection pool config with SSL conditional
+// PostgreSQL connection pool config
 const pool = new Pool(
   isProduction
     ? {
         connectionString: process.env.DATABASE_URL,
-        ssl: {
-          rejectUnauthorized: false,
-        },
+        ssl: { rejectUnauthorized: false },
       }
     : {
         host: process.env.DB_HOST || 'localhost',
@@ -45,17 +41,17 @@ pool.connect((err, client, release) => {
   }
 });
 
-// Create clients table if not exists
+// Create clients table
 function initializeDatabase(client, release) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS clients (
       id SERIAL PRIMARY KEY,
-      full_name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL,
-      phone VARCHAR(50) NOT NULL,
-      location VARCHAR(255) NOT NULL,
-      starlink_type VARCHAR(100) NOT NULL,
-      price NUMERIC(10,2) NOT NULL,
+      full_name VARCHAR(255),
+      email VARCHAR(255),
+      phone VARCHAR(50),
+      location VARCHAR(255),
+      service_type VARCHAR(100),
+      price NUMERIC(10,2),
       serial_number VARCHAR(100),
       supporter VARCHAR(100),
       has_bonus BOOLEAN DEFAULT FALSE,
@@ -101,39 +97,38 @@ app.get('/api/clients', async (req, res) => {
   }
 });
 
-// POST add new client
+// POST: add client (everything optional)
 app.post('/api/clients', async (req, res) => {
   const {
     full_name, email, phone, location,
-    starlink_type, price, serial_number,
-    supporter, has_bonus,
+    service_type, price, serial_number,
+    supporter, has_bonus
   } = req.body;
-
-  if (!full_name || !email || !phone || !location || !starlink_type || price == null) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
 
   try {
     const countResult = await pool.query('SELECT COUNT(*) AS total FROM clients');
     const totalClients = parseInt(countResult.rows[0].total);
 
     if (totalClients >= MAX_CLIENTS) {
-      return res.status(400).json({ error: `Client limit of ${MAX_CLIENTS} reached. Cannot add more.` });
+      return res.status(400).json({ error: `Client limit of ${MAX_CLIENTS} reached.` });
     }
+
+    const parsedPrice = isNaN(parseFloat(price)) ? null : parseFloat(price);
+    const parsedBonus = has_bonus === true || has_bonus === 'true';
 
     const insertQuery = `
       INSERT INTO clients (
         full_name, email, phone, location,
-        starlink_type, price, serial_number,
+        service_type, price, serial_number,
         supporter, has_bonus
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id;
     `;
 
     const insertValues = [
-      full_name, email, phone, location,
-      starlink_type, price, serial_number || null,
-      supporter || null, has_bonus || false,
+      full_name || null, email || null, phone || null, location || null,
+      service_type || null, parsedPrice, serial_number || null,
+      supporter || null, parsedBonus
     ];
 
     const result = await pool.query(insertQuery, insertValues);
@@ -144,32 +139,31 @@ app.post('/api/clients', async (req, res) => {
   }
 });
 
-// PUT update existing client
+// PUT update client (everything optional)
 app.put('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
   const {
     full_name, email, phone, location,
-    starlink_type, price, serial_number,
-    supporter, has_bonus,
+    service_type, price, serial_number,
+    supporter, has_bonus
   } = req.body;
 
-  if (!full_name || !email || !phone || !location || !starlink_type || price == null) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-
   try {
+    const parsedPrice = isNaN(parseFloat(price)) ? null : parseFloat(price);
+    const parsedBonus = has_bonus === true || has_bonus === 'true';
+
     const updateQuery = `
       UPDATE clients SET
         full_name = $1, email = $2, phone = $3, location = $4,
-        starlink_type = $5, price = $6, serial_number = $7,
+        service_type = $5, price = $6, serial_number = $7,
         supporter = $8, has_bonus = $9, updated_at = CURRENT_TIMESTAMP
       WHERE id = $10
     `;
 
     const updateValues = [
-      full_name, email, phone, location,
-      starlink_type, price, serial_number || null,
-      supporter || null, has_bonus || false, id,
+      full_name || null, email || null, phone || null, location || null,
+      service_type || null, parsedPrice, serial_number || null,
+      supporter || null, parsedBonus, id
     ];
 
     const result = await pool.query(updateQuery, updateValues);
@@ -185,7 +179,7 @@ app.put('/api/clients/:id', async (req, res) => {
   }
 });
 
-// DELETE client by ID
+// DELETE
 app.delete('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -203,7 +197,7 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 });
 
-// Serve React app in production from correct relative path
+// Serve frontend (prod)
 if (isProduction) {
   app.use(express.static(path.join(__dirname, '../client/build')));
   app.get('*', (req, res) => {
@@ -211,13 +205,7 @@ if (isProduction) {
   });
 }
 
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Server error:', err.stack);
-  res.status(500).json({ error: 'Server error' });
-});
-
-// GET reminders endpoint - dynamic version
+// Reminders route
 app.get('/api/reminders', async (req, res) => {
   const query = `
     SELECT full_name, created_at

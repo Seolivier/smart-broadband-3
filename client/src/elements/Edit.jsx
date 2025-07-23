@@ -6,13 +6,15 @@ export default function Edit({ client, onCancel, onSaved }) {
     email: '',
     location: '',
     phone: '',
-    service_type: 'Starlink Mini', // default
+    service_type: '', // Let user choose
     price: '',
     serial_number: '',
     supporter: '',
     has_bonus: false,
     bonus_amount: '',
   });
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (client && client.id) {
@@ -21,7 +23,7 @@ export default function Edit({ client, onCancel, onSaved }) {
         email: client.email || '',
         location: client.location || '',
         phone: client.phone || '',
-        service_type: client.service_type || 'Starlink Mini',
+        service_type: client.service_type || '',
         price: client.price ? client.price.toString() : '',
         serial_number: client.serial_number || '',
         supporter: client.supporter || '',
@@ -34,7 +36,7 @@ export default function Edit({ client, onCancel, onSaved }) {
         email: '',
         location: '',
         phone: '',
-        service_type: 'Starlink Mini',
+        service_type: '',
         price: '',
         serial_number: '',
         supporter: '',
@@ -57,6 +59,7 @@ export default function Edit({ client, onCancel, onSaved }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     const payload = {
       full_name: form.full_name,
@@ -64,20 +67,29 @@ export default function Edit({ client, onCancel, onSaved }) {
       location: form.location,
       phone: form.phone,
       service_type: form.service_type,
-      price: parseFloat(form.price),
-      serial_number: ['Starlink Mini', 'Starlink Standard'].includes(form.service_type)
+      price:
+        form.price && !isNaN(parseFloat(form.price))
+          ? parseFloat(form.price)
+          : null,
+      serial_number: ['Starlink Mini', 'Starlink Standard'].includes(
+        form.service_type
+      )
         ? form.serial_number
         : null,
       supporter: form.supporter || null,
       has_bonus: form.has_bonus,
-      bonus_amount: form.has_bonus ? parseFloat(form.bonus_amount) : null,
+      bonus_amount:
+        form.has_bonus &&
+        form.bonus_amount &&
+        !isNaN(parseFloat(form.bonus_amount))
+          ? parseFloat(form.bonus_amount)
+          : null,
     };
 
     const method = client && client.id ? 'PUT' : 'POST';
-    const url = client.id
-  ? `${API_URL}/api/clients/${client.id}`
-  : `${API_URL}/api/clients`;
-
+    const url = client && client.id
+      ? `${API_URL}/api/clients/${client.id}`
+      : `${API_URL}/api/clients`;
 
     try {
       const res = await fetch(url, {
@@ -95,6 +107,8 @@ export default function Edit({ client, onCancel, onSaved }) {
       }
     } catch (error) {
       alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -109,9 +123,10 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="full_name"
           value={form.full_name}
           onChange={handleChange}
-          required
+          placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       <label>
         Email:<br />
@@ -120,9 +135,10 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="email"
           value={form.email}
           onChange={handleChange}
-          required
+          placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       <label>
         Location:<br />
@@ -131,9 +147,10 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="location"
           value={form.location}
           onChange={handleChange}
-          required
+          placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       <label>
         Phone:<br />
@@ -142,9 +159,10 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="phone"
           value={form.phone}
           onChange={handleChange}
-          required
+          placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       <label>
         Service Type:<br />
@@ -152,15 +170,16 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="service_type"
           value={form.service_type}
           onChange={handleChange}
-          required
         >
-          <option value="">-- Select Service Type --</option>
+          <option value="">-- Select Service --</option>
           <option value="Starlink Mini">Starlink Mini</option>
           <option value="Starlink Standard">Starlink Standard</option>
           <option value="4G SIM Card">4G SIM Card</option>
-          <option value="GPS Truck Service">GPS Truck Service</option>
+          <option value="GPS">GPS</option>
+          <option value="Other">Other</option>
         </select>
-      </label><br />
+      </label>
+      <br />
 
       <label>
         Price:<br />
@@ -169,11 +188,12 @@ export default function Edit({ client, onCancel, onSaved }) {
           name="price"
           value={form.price}
           onChange={handleChange}
-          required
           min="0"
           step="0.01"
+          placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       {['Starlink Mini', 'Starlink Standard'].includes(form.service_type) && (
         <>
@@ -184,9 +204,10 @@ export default function Edit({ client, onCancel, onSaved }) {
               name="serial_number"
               value={form.serial_number}
               onChange={handleChange}
-              required
+              placeholder="Optional"
             />
-          </label><br />
+          </label>
+          <br />
         </>
       )}
 
@@ -199,7 +220,8 @@ export default function Edit({ client, onCancel, onSaved }) {
           onChange={handleChange}
           placeholder="Optional"
         />
-      </label><br />
+      </label>
+      <br />
 
       <label>
         <input
@@ -209,7 +231,8 @@ export default function Edit({ client, onCancel, onSaved }) {
           onChange={handleChange}
         />
         {' '}Has Bonus?
-      </label><br />
+      </label>
+      <br />
 
       {form.has_bonus && (
         <label>
@@ -221,14 +244,21 @@ export default function Edit({ client, onCancel, onSaved }) {
             onChange={handleChange}
             min="0"
             step="0.01"
-            required
+            placeholder="Optional"
           />
         </label>
       )}
 
       <br />
-      <button type="submit">Save</button>
-      <button type="button" onClick={onCancel} style={{ marginLeft: 10 }}>
+      <button type="submit" disabled={loading}>
+        {loading ? 'Saving...' : 'Save'}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        style={{ marginLeft: 10 }}
+        disabled={loading}
+      >
         Cancel
       </button>
     </form>
