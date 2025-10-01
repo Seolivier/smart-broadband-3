@@ -8,6 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const MAX_CLIENTS = 1000;
 
+// Determine if production
 const isProduction = process.env.NODE_ENV === 'production';
 
 // CORS (allow local frontend in dev, same domain in prod)
@@ -15,7 +16,7 @@ const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
-// PostgreSQL connection pool config
+// PostgreSQL connection pool
 const pool = new Pool(
   isProduction
     ? {
@@ -23,18 +24,19 @@ const pool = new Pool(
         ssl: { rejectUnauthorized: false },
       }
     : {
-        host: process.env.DB_HOST || 'localhost',
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'smartbroadband',
+        host: process.env.DB_HOST || 'dpg-d3eevsp5pdvs73941cu0-a.oregon-postgres.render.com',
+        user: process.env.DB_USER || 'smart_broadband_3_user',
+        password: process.env.DB_PASSWORD || 'uvwvNcNAZM21iC3L9fsUU2hv41LFUkCv',
+        database: process.env.DB_NAME || 'smart_broadband_3',
         port: process.env.DB_PORT || 5432,
+        ssl: { rejectUnauthorized: false }, // Required for Render PostgreSQL
       }
 );
 
 // Initialize DB on startup
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('Database connection error:', err);
+    console.error('❌ Database connection error:', err);
     process.exit(1);
   } else {
     console.log('✅ Connected to PostgreSQL database');
@@ -94,7 +96,7 @@ app.get('/api/clients', async (req, res) => {
       totalClients: total,
     });
   } catch (err) {
-    console.error('Error fetching clients:', err);
+    console.error('❌ Error fetching clients:', err);
     res.status(500).json({ error: 'Failed to fetch clients' });
   }
 });
@@ -136,7 +138,7 @@ app.post('/api/clients', async (req, res) => {
     const result = await pool.query(insertQuery, insertValues);
     res.status(201).json({ id: result.rows[0].id, message: 'Client created successfully' });
   } catch (err) {
-    console.error('Error inserting client:', err);
+    console.error('❌ Error inserting client:', err);
     res.status(500).json({ error: 'Failed to create client' });
   }
 });
@@ -176,7 +178,7 @@ app.put('/api/clients/:id', async (req, res) => {
 
     res.json({ message: 'Client updated successfully' });
   } catch (err) {
-    console.error('Error updating client:', err);
+    console.error('❌ Error updating client:', err);
     res.status(500).json({ error: 'Failed to update client' });
   }
 });
@@ -194,7 +196,7 @@ app.delete('/api/clients/:id', async (req, res) => {
 
     res.json({ message: 'Client deleted successfully' });
   } catch (err) {
-    console.error('Error deleting client:', err);
+    console.error('❌ Error deleting client:', err);
     res.status(500).json({ error: 'Failed to delete client' });
   }
 });
@@ -216,7 +218,7 @@ app.get('/api/reminders', async (req, res) => {
 
     res.json({ reminders });
   } catch (err) {
-    console.error('Error fetching reminders:', err);
+    console.error('❌ Error fetching reminders:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -239,12 +241,15 @@ process.on('SIGINT', () => {
   console.log('\nServer shutting down gracefully...');
   pool.end(err => {
     if (err) {
-      console.error('Error closing database connection:', err);
+      console.error('❌ Error closing database connection:', err);
     } else {
-      console.log('Database connection closed.');
+      console.log('✅ Database connection closed.');
     }
     process.exit(0);
   });
 });
+
+
+
 
 
