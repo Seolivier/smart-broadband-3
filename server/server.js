@@ -10,6 +10,7 @@ const MAX_CLIENTS = 1000;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// CORS (allow local frontend in dev, same domain in prod)
 const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
@@ -30,18 +31,18 @@ const pool = new Pool(
       }
 );
 
-// Connect and initialize DB
+// Initialize DB on startup
 pool.connect((err, client, release) => {
   if (err) {
     console.error('Database connection error:', err);
     process.exit(1);
   } else {
-    console.log('Connected to PostgreSQL database');
+    console.log('✅ Connected to PostgreSQL database');
     initializeDatabase(client, release);
   }
 });
 
-// Create clients table
+// Create clients table if not exists
 function initializeDatabase(client, release) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS clients (
@@ -59,18 +60,19 @@ function initializeDatabase(client, release) {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
-
   client.query(createTableQuery, (err) => {
     release();
     if (err) {
-      console.error('Error creating clients table:', err);
+      console.error('❌ Error creating clients table:', err);
     } else {
-      console.log('Clients table ready');
+      console.log('✅ Clients table ready');
     }
   });
 }
 
-// GET paginated clients
+// ================== API Routes ==================
+
+// GET clients with pagination
 app.get('/api/clients', async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -97,7 +99,7 @@ app.get('/api/clients', async (req, res) => {
   }
 });
 
-// POST: add client (everything optional)
+// POST add client
 app.post('/api/clients', async (req, res) => {
   const {
     full_name, email, phone, location,
@@ -139,7 +141,7 @@ app.post('/api/clients', async (req, res) => {
   }
 });
 
-// PUT update client (everything optional)
+// PUT update client
 app.put('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
   const {
@@ -179,7 +181,7 @@ app.put('/api/clients/:id', async (req, res) => {
   }
 });
 
-// DELETE
+// DELETE client
 app.delete('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
 
@@ -197,15 +199,7 @@ app.delete('/api/clients/:id', async (req, res) => {
   }
 });
 
-// Serve frontend (prod)
-if (isProduction) {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-  });
-}
-
-// Reminders route
+// GET reminders
 app.get('/api/reminders', async (req, res) => {
   const query = `
     SELECT full_name, created_at
@@ -227,9 +221,17 @@ app.get('/api/reminders', async (req, res) => {
   }
 });
 
-// Start server
+// ================== Serve React Frontend ==================
+if (isProduction) {
+  app.use(express.static(path.join(__dirname, '../client/build')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
+// ================== Start Server ==================
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 
 // Graceful shutdown
@@ -244,3 +246,5 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
+
+
