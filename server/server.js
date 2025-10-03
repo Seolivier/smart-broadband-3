@@ -8,32 +8,22 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const MAX_CLIENTS = 1000;
 
-// Determine if production
-const isProduction = process.env.NODE_ENV === 'production';
-
-// CORS (allow local frontend in dev, same domain in prod)
+// CORS
 const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
-// PostgreSQL connection pool
-const pool = new Pool(
-  isProduction
-    ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-      }
-    : {
-        host: process.env.DB_HOST || 'dpg-d3eevsp5pdvs73941cu0-a.oregon-postgres.render.com',
-        user: process.env.DB_USER || 'smart_broadband_3_user',
-        password: process.env.DB_PASSWORD || 'uvwvNcNAZM21iC3L9fsUU2hv41LFUkCv',
-        database: process.env.DB_NAME || 'smart_broadband_3',
-        port: process.env.DB_PORT || 5432,
-        ssl: { rejectUnauthorized: false }, // Required for Render PostgreSQL
-      }
-);
+// PostgreSQL connection
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: { rejectUnauthorized: false },
+});
 
-// Initialize DB on startup
+// Initialize DB
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Database connection error:', err);
@@ -44,7 +34,6 @@ pool.connect((err, client, release) => {
   }
 });
 
-// Create clients table if not exists
 function initializeDatabase(client, release) {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS clients (
@@ -72,7 +61,7 @@ function initializeDatabase(client, release) {
   });
 }
 
-// ================== API Routes ==================
+// ================== API ROUTES ==================
 
 // GET clients with pagination
 app.get('/api/clients', async (req, res) => {
@@ -103,16 +92,11 @@ app.get('/api/clients', async (req, res) => {
 
 // POST add client
 app.post('/api/clients', async (req, res) => {
-  const {
-    full_name, email, phone, location,
-    service_type, price, serial_number,
-    supporter, has_bonus
-  } = req.body;
+  const { full_name, email, phone, location, service_type, price, serial_number, supporter, has_bonus } = req.body;
 
   try {
     const countResult = await pool.query('SELECT COUNT(*) AS total FROM clients');
     const totalClients = parseInt(countResult.rows[0].total);
-
     if (totalClients >= MAX_CLIENTS) {
       return res.status(400).json({ error: `Client limit of ${MAX_CLIENTS} reached.` });
     }
@@ -129,11 +113,7 @@ app.post('/api/clients', async (req, res) => {
       RETURNING id;
     `;
 
-    const insertValues = [
-      full_name || null, email || null, phone || null, location || null,
-      service_type || null, parsedPrice, serial_number || null,
-      supporter || null, parsedBonus
-    ];
+    const insertValues = [full_name || null, email || null, phone || null, location || null, service_type || null, parsedPrice, serial_number || null, supporter || null, parsedBonus];
 
     const result = await pool.query(insertQuery, insertValues);
     res.status(201).json({ id: result.rows[0].id, message: 'Client created successfully' });
@@ -146,11 +126,7 @@ app.post('/api/clients', async (req, res) => {
 // PUT update client
 app.put('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
-  const {
-    full_name, email, phone, location,
-    service_type, price, serial_number,
-    supporter, has_bonus
-  } = req.body;
+  const { full_name, email, phone, location, service_type, price, serial_number, supporter, has_bonus } = req.body;
 
   try {
     const parsedPrice = isNaN(parseFloat(price)) ? null : parseFloat(price);
@@ -164,17 +140,10 @@ app.put('/api/clients/:id', async (req, res) => {
       WHERE id = $10
     `;
 
-    const updateValues = [
-      full_name || null, email || null, phone || null, location || null,
-      service_type || null, parsedPrice, serial_number || null,
-      supporter || null, parsedBonus, id
-    ];
+    const updateValues = [full_name || null, email || null, phone || null, location || null, service_type || null, parsedPrice, serial_number || null, supporter || null, parsedBonus, id];
 
     const result = await pool.query(updateQuery, updateValues);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Client not found' });
-    }
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Client not found' });
 
     res.json({ message: 'Client updated successfully' });
   } catch (err) {
@@ -186,14 +155,9 @@ app.put('/api/clients/:id', async (req, res) => {
 // DELETE client
 app.delete('/api/clients/:id', async (req, res) => {
   const id = req.params.id;
-
   try {
     const result = await pool.query('DELETE FROM clients WHERE id = $1', [id]);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Client not found' });
-    }
-
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Client not found' });
     res.json({ message: 'Client deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting client:', err);
@@ -215,7 +179,6 @@ app.get('/api/reminders', async (req, res) => {
     const reminders = result.rows.map(client =>
       `Reminder: Client ${client.full_name}'s subscription is nearing renewal. Registered on ${client.created_at.toISOString().slice(0, 10)}`
     );
-
     res.json({ reminders });
   } catch (err) {
     console.error('❌ Error fetching reminders:', err);
@@ -223,31 +186,30 @@ app.get('/api/reminders', async (req, res) => {
   }
 });
 
-// ================== Serve React Frontend ==================
-if (isProduction) {
+// Serve React frontend
+if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
 }
 
-// ================== Start Server ==================
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+// Start server
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nServer shutting down gracefully...');
   pool.end(err => {
-    if (err) {
-      console.error('❌ Error closing database connection:', err);
-    } else {
-      console.log('✅ Database connection closed.');
-    }
+    if (err) console.error('❌ Error closing database connection:', err);
+    else console.log('✅ Database connection closed.');
     process.exit(0);
   });
 });
+
+
+
+
 
 
 

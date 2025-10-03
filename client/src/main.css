@@ -1,31 +1,39 @@
 /* main.css */
 
-/* Remove max-width and centering from container */
+/* Container full width */
 .container {
-  width: 100%;       /* full width of viewport */
-  margin: 0;         /* no centering */
-  padding: 2rem 2rem 2rem 2rem; /* keep padding */
+  width: 100%;
+  margin: 0;
+  padding: 2rem;
   font-family: sans-serif;
 }
+/* Main Title Styling */
+.container h2 {
+  font-family: 'Courier New', Courier, monospace; /* Monospace font */
+  font-size: 3rem; /* larger for visibility */
+  font-weight: bold;
+  color: #4B5320; /* military green, visible */
+  margin-bottom: 1.5rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* subtle depth for readability */
+}
 
-/* flex container for form and others */
+
+/* Flex container */
 .flex-container {
   display: flex;
   gap: 2rem;
   flex-wrap: wrap;
-  justify-content: flex-start; /* align children to left */
+  justify-content: flex-start;
 }
 
-/* Minimal style on form only */
+/* Form styling */
 .left-form {
   flex: 1 1 300px;
   max-width: 350px;
   background: #fafafa;
   padding: 1rem;
   border-radius: 8px;
-  box-shadow: none; /* no shadow for minimal */
   border: 1px solid #ddd;
-  /* Keep as is */
 }
 
 .left-form label {
@@ -45,47 +53,62 @@
   background-color: white;
 }
 
-/* Add Client button */
 .left-form button.add-client-btn {
   margin-top: 1rem;
   padding: 0.6rem;
   border: none;
-  background-color: #28a745; /* green */
+  background-color: #28a745;
   color: white;
   font-weight: bold;
   border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .left-form button.add-client-btn:hover {
   background-color: #218838;
 }
 
-/* Table styling more solid and traditional */
-.client-list {
-  flex: 1 1 600px;
-  width: 100%; /* full width of container */
-  /* Make sure it stretches full width */
-  margin-left: 0; /* remove any left margin */
+/* Toggle buttons */
+.toggle-buttons {
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
 }
 
-/* Make sure the table uses full width of viewport */
+.toggle-buttons button.clients-btn {
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.toggle-buttons button.clients-btn:hover {
+  background-color: #0056b3;
+}
+
+.toggle-buttons button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Client list table */
+.client-list {
+  flex: 1 1 600px;
+  width: 100%;
+}
+
 .client-list table {
-  width: 100vw; /* full viewport width */
+  width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
   font-size: 0.95rem;
   background: white;
-  box-shadow: none;
-  border-radius: 0;
-  overflow: visible;
   border: 1px solid #ccc;
-  /* Remove left padding/margin */
-  margin-left: 0;
 }
 
-/* Table cells */
 .client-list th,
 .client-list td {
   padding: 0.75rem;
@@ -104,68 +127,36 @@
   padding: 1rem;
 }
 
-/* Buttons and alerts */
-.toggle-buttons {
-  margin-bottom: 1rem;
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-start; /* left align */
-}
-
-/* Clients toggle buttons */
-.toggle-buttons button.clients-btn {
-  padding: 0.5rem 1rem;
-  background-color: #007bff; /* blue */
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.toggle-buttons button.clients-btn:hover {
-  background-color: #0056b3;
-}
-
-.toggle-buttons button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-/* Edit button in table */
+/* Edit/Delete buttons */
 .client-list button.edit-btn {
-  background-color: #ffc107; /* amber */
+  background-color: #ffc107;
   color: black;
   border: none;
   padding: 0.3rem 0.6rem;
   border-radius: 4px;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .client-list button.edit-btn:hover {
   background-color: #e0a800;
 }
 
-/* Delete button in table */
 .client-list button.delete-btn {
-  background-color: #dc3545; /* red */
+  background-color: #dc3545;
   color: white;
   border: none;
   padding: 0.3rem 0.6rem;
   border-radius: 4px;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .client-list button.delete-btn:hover {
   background-color: #c82333;
 }
 
-/* Alert */
+/* Alerts */
 .alert {
   background: #fdd;
   padding: 1rem;
@@ -177,7 +168,7 @@
 /* Pagination */
 .pagination {
   display: flex;
-  justify-content: flex-start; /* left aligned */
+  justify-content: flex-start;
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -189,29 +180,10 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s ease;
 }
 
 .pagination button:disabled {
   background-color: #ddd;
   cursor: not-allowed;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

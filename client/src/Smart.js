@@ -11,7 +11,7 @@ export default function Smart() {
     email: '',
     phone: '',
     location: '',
-    service_type: 'Starlink Mini', // renamed here
+    service_type: 'Starlink Mini',
     price: '',
     serial_number: '',
     supporter: '',
@@ -23,80 +23,62 @@ export default function Smart() {
   const [submitting, setSubmitting] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Reminders state
   const [reminders, setReminders] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-
-  // Ref for detecting clicks outside notifications panel
   const notifRef = useRef(null);
 
-  // Show serial number input only for these service types
   const showSerial =
     form.service_type === 'Starlink Mini' || form.service_type === 'Starlink Standard';
 
-  // Fetch clients when currentPage changes or when view switches to list
-  useEffect(() => {
-    if (view === 'list') {
-      fetchClients(currentPage);
-    }
-  }, [currentPage, view]);
-
-  // Fetch reminders once on component mount
-  useEffect(() => {
-    async function fetchReminders() {
-      try {
-        const res = await fetch(`${API_URL}/api/reminders`);
-        const data = await res.json();
-        if (data.reminders && data.reminders.length > 0) {
-          setReminders(data.reminders);
-        }
-      } catch (error) {
-        console.error('Error fetching reminders:', error);
-      }
-    }
-    fetchReminders();
-  }, []);
-
-  // Close notifications panel when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-    }
-
-    if (showNotifications) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showNotifications]);
+  useEffect(() => { fetchClients(currentPage); }, [currentPage]);
 
   async function fetchClients(page = 1) {
     setLoadingClients(true);
     setError('');
     try {
       const res = await fetch(`${API_URL}/api/clients?page=${page}&limit=${CLIENTS_PER_PAGE}`);
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'Failed to fetch clients');
-      setClients(result.data);
-      setTotalPages(result.totalPages);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch clients');
+      setClients(data.data);
+      setTotalPages(data.totalPages);
     } catch (err) {
       setError(err.message);
-      setClients([]); // clear clients on error
+      setClients([]);
       setTotalPages(1);
     } finally {
       setLoadingClients(false);
     }
   }
+
+  useEffect(() => {
+    async function fetchReminders() {
+      try {
+        const res = await fetch(`${API_URL}/api/reminders`);
+        const data = await res.json();
+        if (data.reminders) setReminders(data.reminders);
+      } catch (err) {
+        console.error('Error fetching reminders:', err);
+      }
+    }
+    fetchReminders();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -109,7 +91,7 @@ export default function Smart() {
       email: client.email,
       phone: client.phone,
       location: client.location,
-      service_type: client.service_type, // renamed here
+      service_type: client.service_type,
       price: client.price,
       serial_number: client.serial_number || '',
       supporter: client.supporter || '',
@@ -126,18 +108,12 @@ export default function Smart() {
     setLoadingClients(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/api/clients/${id}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(`${API_URL}/api/clients/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || 'Failed to delete client');
       } else {
-        if (clients.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        } else {
-          fetchClients(currentPage);
-        }
+        fetchClients(currentPage);
       }
     } catch (err) {
       setError('Network error while deleting client');
@@ -150,9 +126,6 @@ export default function Smart() {
     e.preventDefault();
     setError('');
 
-    // No required field validation: all fields optional
-
-    // Only validate price if provided
     if (form.price !== '' && (isNaN(form.price) || Number(form.price) < 0)) {
       return setError('Price must be a non-negative number');
     }
@@ -169,8 +142,7 @@ export default function Smart() {
       });
 
       const data = await res.json();
-      if (!res.ok)
-        return setError(data.error || (editingId ? 'Failed to update client' : 'Failed to add client'));
+      if (!res.ok) return setError(data.error || 'Failed to save client');
 
       alert(editingId ? 'Client updated successfully!' : 'Client added successfully!');
 
@@ -179,7 +151,7 @@ export default function Smart() {
         email: '',
         phone: '',
         location: '',
-        service_type: 'Starlink Mini', // reset to default renamed field
+        service_type: 'Starlink Mini',
         price: '',
         serial_number: '',
         supporter: '',
@@ -187,8 +159,8 @@ export default function Smart() {
       });
       setEditingId(null);
       setView('list');
-      setCurrentPage(1);
       fetchClients(1);
+      setCurrentPage(1);
     } catch (err) {
       setError('Network error');
     } finally {
@@ -196,35 +168,10 @@ export default function Smart() {
     }
   }
 
-  function handleViewChange(newView) {
-    setError('');
-    setView(newView);
-    if (newView === 'list') {
-      setCurrentPage(1);
-    }
-    if (newView === 'form') {
-      setEditingId(null);
-      setForm({
-        full_name: '',
-        email: '',
-        phone: '',
-        location: '',
-        service_type: 'Starlink Mini', // reset default value
-        price: '',
-        serial_number: '',
-        supporter: '',
-        has_bonus: false,
-      });
-    }
-  }
-
   return (
     <div className="container" style={{ position: 'relative' }}>
-      {/* Notification Button */}
-      <div
-        ref={notifRef}
-        style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000, cursor: 'pointer' }}
-      >
+      {/* Notifications */}
+      <div ref={notifRef} style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
         <button
           onClick={() => setShowNotifications(!showNotifications)}
           style={{
@@ -235,9 +182,9 @@ export default function Smart() {
             height: '45px',
             color: 'white',
             fontSize: '18px',
+            cursor: 'pointer',
             position: 'relative',
           }}
-          aria-label="Toggle notifications"
           title="Notifications"
         >
           🔔
@@ -259,8 +206,6 @@ export default function Smart() {
             </span>
           )}
         </button>
-
-        {/* Notifications Panel */}
         {showNotifications && (
           <div
             style={{
@@ -272,17 +217,13 @@ export default function Smart() {
               boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
               borderRadius: '5px',
               padding: '10px',
-              color: '#333',
               fontSize: '14px',
+              color: '#333',
             }}
           >
             <strong>Subscription Reminders</strong>
             <ul style={{ paddingLeft: '20px', marginTop: '10px' }}>
-              {reminders.length === 0 ? (
-                <li>No new reminders</li>
-              ) : (
-                reminders.map((msg, idx) => <li key={idx}>{msg}</li>)
-              )}
+              {reminders.length === 0 ? <li>No new reminders</li> : reminders.map((msg, idx) => <li key={idx}>{msg}</li>)}
             </ul>
           </div>
         )}
@@ -290,17 +231,18 @@ export default function Smart() {
 
       <h2>Smart Broadband Clients</h2>
 
+      {/* Top Buttons */}
       <div className="toggle-buttons">
         <button
           className="clients-btn"
-          onClick={() => handleViewChange('form')}
+          onClick={() => { setView('form'); setEditingId(null); }}
           disabled={view === 'form'}
         >
-          {editingId ? 'Edit Client' : 'Add Client'}
+          Add Client
         </button>
         <button
           className="clients-btn"
-          onClick={() => handleViewChange('list')}
+          onClick={() => setView('list')}
           disabled={view === 'list'}
         >
           View Clients
@@ -310,108 +252,58 @@ export default function Smart() {
       {error && <div className="alert">{error}</div>}
 
       <div className="flex-container">
+        {/* Form */}
         {view === 'form' && (
           <form className="left-form" onSubmit={handleSubmit}>
             <label>
               Full Name
-              <input
-                type="text"
-                name="full_name"
-                value={form.full_name}
-                onChange={handleChange}
-              />
+              <input type="text" name="full_name" value={form.full_name} onChange={handleChange} />
             </label>
             <label>
               Email
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-              />
+              <input type="email" name="email" value={form.email} onChange={handleChange} />
             </label>
             <label>
               Phone
-              <input
-                type="text"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-              />
+              <input type="text" name="phone" value={form.phone} onChange={handleChange} />
             </label>
             <label>
               Location
-              <input
-                type="text"
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-              />
+              <input type="text" name="location" value={form.location} onChange={handleChange} />
             </label>
             <label>
-             <select
-  name="service_type"
-  value={form.service_type}
-  onChange={handleChange}
->
-  <option value="Starlink Mini">Starlink Mini</option>
-  <option value="Starlink Standard">Starlink Standard</option>
-  <option value="4G">4G</option>
-  <option value="GPS">GPS</option>
-</select>
-
+              Service Type
+              <select name="service_type" value={form.service_type} onChange={handleChange}>
+                <option value="Starlink Mini">Starlink Mini</option>
+                <option value="Starlink Standard">Starlink Standard</option>
+                <option value="4G">4G</option>
+                <option value="GPS">GPS</option>
+              </select>
             </label>
             <label>
               Price
-              <input
-                type="number"
-                step="0.01"
-                name="price"
-                value={form.price}
-                onChange={handleChange}
-              />
+              <input type="number" step="0.01" name="price" value={form.price} onChange={handleChange} />
             </label>
             {showSerial && (
               <label>
                 Serial Number
-                <input
-                  type="text"
-                  name="serial_number"
-                  value={form.serial_number}
-                  onChange={handleChange}
-                />
+                <input type="text" name="serial_number" value={form.serial_number} onChange={handleChange} />
               </label>
             )}
             <label>
               Supporter
-              <input
-                type="text"
-                name="supporter"
-                value={form.supporter}
-                onChange={handleChange}
-              />
+              <input type="text" name="supporter" value={form.supporter} onChange={handleChange} />
             </label>
             <div>
-              <input
-                type="checkbox"
-                name="has_bonus"
-                checked={form.has_bonus}
-                onChange={handleChange}
-              />{' '}
-              Has Bonus
+              <input type="checkbox" name="has_bonus" checked={form.has_bonus} onChange={handleChange} /> Has Bonus
             </div>
-            <button type="submit" disabled={submitting} className="add-client-btn">
-              {submitting
-                ? editingId
-                  ? 'Updating...'
-                  : 'Adding...'
-                : editingId
-                ? 'Update Client'
-                : 'Add Client'}
+            <button type="submit" className="add-client-btn" disabled={submitting}>
+              {submitting ? (editingId ? 'Updating...' : 'Adding...') : editingId ? 'Update Client' : 'Add Client'}
             </button>
           </form>
         )}
 
+        {/* Client List */}
         {view === 'list' && (
           <div className="client-list">
             <h3>Clients List</h3>
@@ -426,7 +318,7 @@ export default function Smart() {
                       <th>Email</th>
                       <th>Phone</th>
                       <th>Location</th>
-                      <th>Service Type</th> {/* renamed header */}
+                      <th>Service Type</th>
                       <th>Price</th>
                       <th>Serial #</th>
                       <th>Supporter</th>
@@ -437,35 +329,24 @@ export default function Smart() {
                   <tbody>
                     {clients.length === 0 ? (
                       <tr>
-                        <td colSpan="10" className="no-data">
-                          No clients found
-                        </td>
+                        <td colSpan="10" className="no-data">No clients found</td>
                       </tr>
                     ) : (
-                      clients.map((client) => (
-                        <tr key={client.id}>
-                          <td>{client.full_name}</td>
-                          <td>{client.email}</td>
-                          <td>{client.phone}</td>
-                          <td>{client.location}</td>
-                          <td>{client.service_type}</td> {/* renamed here */}
-                          <td>{Number(client.price).toFixed(2)}</td>
-                          <td>{client.serial_number || ''}</td>
-                          <td>{client.supporter || ''}</td>
-                          <td>{client.has_bonus ? 'Yes' : 'No'}</td>
+                      clients.map(c => (
+                        <tr key={c.id}>
+                          <td>{c.full_name}</td>
+                          <td>{c.email}</td>
+                          <td>{c.phone}</td>
+                          <td>{c.location}</td>
+                          <td>{c.service_type}</td>
+                          <td>{c.price ? Number(c.price).toFixed(2) : ''}</td>
+                          <td>{c.serial_number || ''}</td>
+                          <td>{c.supporter || ''}</td>
+                          <td>{c.has_bonus ? 'Yes' : 'No'}</td>
                           <td>
-                            <button
-                              className="edit-btn"
-                              onClick={() => handleEdit(client)}
-                            >
-                              Edit
-                            </button>{' '}
-                            <button
-                              className="delete-btn"
-                              onClick={() => handleDelete(client.id)}
-                            >
-                              Delete
-                            </button>
+                            <button className="edit-btn" onClick={() => handleEdit(c)}>Edit</button>
+                            <button className="edit-btn" onClick={() => { setEditingId(c.id); setView('form'); }}>View</button>
+                            <button className="delete-btn" onClick={() => handleDelete(c.id)}>Delete</button>
                           </td>
                         </tr>
                       ))
@@ -473,23 +354,12 @@ export default function Smart() {
                   </tbody>
                 </table>
 
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="pagination">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </button>
-                    <span>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </button>
+                    <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}>Previous</button>
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Next</button>
                   </div>
                 )}
               </>
@@ -500,3 +370,28 @@ export default function Smart() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

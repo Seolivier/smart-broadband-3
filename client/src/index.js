@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './Smart';  // Your main app component
+import App from './Smart';  // Smart.js is your main frontend entry
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -8,5 +8,8 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+
+
 
 
