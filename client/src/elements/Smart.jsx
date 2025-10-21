@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -9,24 +8,39 @@ const Smart = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const API_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  // ----------------------------
-  // Fetch clients whenever page changes
-  // ----------------------------
+  const fetchClients = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await fetch(`${API_URL}/api/clients?page=${currentPage}`);
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      const data = await res.json();
+      setClients(data.data || []);
+      setTotalPages(data.totalPages || 1);
+    } catch (err) {
+      console.error("Error fetching clients:", err);
+      setError("Unable to load client list. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteClient = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this client?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete client");
+      fetchClients(); // Refresh table
+    } catch (err) {
+      console.error("Error deleting client:", err);
+      alert("Failed to delete client.");
+    }
+  };
+
   useEffect(() => {
-    // Simple fetch version (like your first snippet)
-    fetch(`${API_URL}/api/clients?page=${currentPage}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setClients(data.data || []);
-        setTotalPages(data.totalPages || 1);
-      })
-      .catch((err) => {
-        console.error("Error fetching clients:", err);
-        setError("Unable to load client list. Please try again later.");
-      })
-      .finally(() => setLoading(false));
+    fetchClients();
   }, [currentPage]);
 
   return (
@@ -45,45 +59,54 @@ const Smart = () => {
         <p style={styles.message}>No clients found.</p>
       ) : (
         <>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Location</th>
-                <th>Service Type</th>
-                <th>Serial Number</th>
-                <th>Price (RWF)</th>
-                <th>Supporter</th>
-                <th>Bonus</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => (
-                <tr key={client.id}>
-                  <td>{client.id}</td>
-                  <td>{client.full_name}</td>
-                  <td>{client.email}</td>
-                  <td>{client.phone}</td>
-                  <td>{client.location}</td>
-                  <td>{client.service_type}</td>
-                  <td>{client.serial_number || "-"}</td>
-                  <td>{Number(client.price).toLocaleString()}</td>
-                  <td>{client.supporter}</td>
-                  <td>{client.has_bonus ? "✅" : "❌"}</td>
-                  <td>{new Date(client.created_at).toLocaleDateString()}</td>
-                  <td style={styles.actionsCell}>
-                    <Link to={`/read/${client.id}`} style={styles.readBtn}>View</Link>
-                    <Link to={`/edit/${client.id}`} style={styles.editBtn}>Edit</Link>
-                  </td>
+          <div style={styles.tableWrapper}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{ ...styles.th, width: "50px" }}>ID</th>
+                  <th style={{ ...styles.th, width: "160px" }}>Full Name</th>
+                  <th style={{ ...styles.th, width: "180px" }}>Email</th>
+                  <th style={{ ...styles.th, width: "120px" }}>Phone</th>
+                  <th style={{ ...styles.th, width: "140px" }}>Location</th>
+                  <th style={{ ...styles.th, width: "120px" }}>Service Type</th>
+                  <th style={{ ...styles.th, width: "120px" }}>Serial</th>
+                  <th style={{ ...styles.th, width: "100px" }}>Price</th>
+                  <th style={{ ...styles.th, width: "120px" }}>Supporter</th>
+                  <th style={{ ...styles.th, width: "70px" }}>Bonus</th>
+                  <th style={{ ...styles.th, width: "120px" }}>Created</th>
+                  <th style={{ ...styles.th, width: "180px" }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {clients.map((c, i) => (
+                  <tr
+                    key={c.id}
+                    style={{
+                      ...styles.row,
+                      backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb",
+                    }}
+                  >
+                    <td style={styles.td}>{c.id}</td>
+                    <td style={styles.td}>{c.full_name}</td>
+                    <td style={styles.td}>{c.email}</td>
+                    <td style={styles.td}>{c.phone}</td>
+                    <td style={styles.td}>{c.location}</td>
+                    <td style={styles.td}>{c.service_type}</td>
+                    <td style={styles.td}>{c.serial_number || "-"}</td>
+                    <td style={styles.td}>{Number(c.price).toLocaleString()}</td>
+                    <td style={styles.td}>{c.supporter}</td>
+                    <td style={styles.td}>{c.has_bonus ? "✅" : "❌"}</td>
+                    <td style={styles.td}>{new Date(c.created_at).toLocaleDateString()}</td>
+                    <td style={styles.actionsCell}>
+                      <Link to={`/read/${c.id}`} style={styles.readBtn}>View</Link>
+                      <Link to={`/edit/${c.id}`} style={styles.editBtn}>Edit</Link>
+                      <button onClick={() => deleteClient(c.id)} style={styles.deleteBtn}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div style={styles.pagination}>
             <button
@@ -93,11 +116,9 @@ const Smart = () => {
             >
               ◀ Prev
             </button>
-
             <span style={styles.pageInfo}>
               Page {currentPage} of {totalPages}
             </span>
-
             <button
               style={styles.pageButton}
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
@@ -115,76 +136,85 @@ const Smart = () => {
 const styles = {
   container: {
     maxWidth: "95%",
-    margin: "40px auto",
-    backgroundColor: "#fff",
-    borderRadius: "16px",
+    margin: "30px auto",
+    backgroundColor: "#f8f9fa",
+    borderRadius: "12px",
     padding: "20px",
-    boxShadow: "0 0 15px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
   },
   title: {
     textAlign: "center",
     color: "#003366",
-    marginBottom: "25px",
-    fontSize: "1.8rem",
-    fontWeight: "bold",
+    marginBottom: "20px",
+    fontSize: "1.5rem",
+    fontWeight: "700",
   },
-  actions: {
-    display: "flex",
-    justifyContent: "flex-end",
-    marginBottom: "15px",
-  },
+  actions: { display: "flex", justifyContent: "flex-end", marginBottom: "15px" },
   addButton: {
     backgroundColor: "#0066cc",
     color: "white",
-    padding: "10px 18px",
+    padding: "8px 14px",
     textDecoration: "none",
-    borderRadius: "8px",
+    borderRadius: "6px",
     fontWeight: "500",
-    transition: "0.2s",
+    fontSize: "0.9rem",
+    transition: "0.3s",
   },
-  message: {
-    textAlign: "center",
-    color: "#555",
-    fontSize: "1rem",
-    marginTop: "30px",
-  },
+  message: { textAlign: "center", color: "#555", fontSize: "0.9rem", marginTop: "20px" },
+  tableWrapper: { overflowX: "auto" },
   table: {
     width: "100%",
     borderCollapse: "collapse",
+    minWidth: "1200px",
+    fontSize: "0.85rem",
+  },
+  th: {
     textAlign: "left",
+    padding: "10px 8px",
+    fontWeight: "600",
+    borderBottom: "2px solid #ccc",
+    backgroundColor: "#f0f4f8",
+    position: "sticky",
+    top: 0,
+    zIndex: 2,
   },
-  actionsCell: {
-    display: "flex",
-    gap: "8px",
+  td: {
+    padding: "10px 8px",
+    borderBottom: "1px solid #eee",
   },
-  readBtn: {
-    color: "#0055cc",
-    textDecoration: "none",
-    fontWeight: "bold",
+  row: {
+    transition: "background-color 0.2s",
+    cursor: "default",
   },
-  editBtn: {
-    color: "#009933",
-    textDecoration: "none",
-    fontWeight: "bold",
+  actionsCell: { display: "flex", gap: "6px" },
+  readBtn: { color: "#0055cc", textDecoration: "none", fontWeight: "500", fontSize: "0.85rem" },
+  editBtn: { color: "#009933", textDecoration: "none", fontWeight: "500", fontSize: "0.85rem" },
+  deleteBtn: {
+    color: "#cc0000",
+    backgroundColor: "#ffeaea",
+    border: "1px solid #cc0000",
+    borderRadius: "5px",
+    padding: "4px 8px",
+    fontSize: "0.8rem",
+    cursor: "pointer",
   },
   pagination: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: "20px",
-    gap: "12px",
+    marginTop: "18px",
+    gap: "10px",
   },
   pageButton: {
-    padding: "8px 14px",
+    padding: "6px 12px",
     border: "1px solid #ccc",
-    borderRadius: "6px",
-    backgroundColor: "#f8f8f8",
+    borderRadius: "5px",
+    backgroundColor: "#f4f4f4",
     cursor: "pointer",
+    fontSize: "0.85rem",
   },
-  pageInfo: {
-    fontSize: "0.95rem",
-    color: "#333",
-  },
+  pageInfo: { fontSize: "0.85rem", color: "#333" },
 };
 
 export default Smart;
