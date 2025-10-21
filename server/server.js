@@ -1,210 +1,270 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const path = require('path');
+import express from "express";
+import cors from "cors";
+import pkg from "pg";
+import dotenv from "dotenv";
 
+dotenv.config();
+
+const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 4000;
-const MAX_CLIENTS = 1000;
 
-// CORS
-const corsOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
-app.use(cors({ origin: corsOrigin }));
+// ✅ CORS Configuration (Allow both localhost and deployed frontend)
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://smart-broadband-3-7-frontend.onrender.com",
+  "https://smart-broadband-3-8-frontend.onrender.com",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like curl or postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`❌ CORS blocked for origin: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-// PostgreSQL connection
+// ✅ PostgreSQL connection
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// Initialize DB
+// Test connection
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Database connection error:', err);
-    process.exit(1);
+    console.error("❌ Error acquiring client", err.stack);
   } else {
-    console.log('✅ Connected to PostgreSQL database');
-    initializeDatabase(client, release);
+    console.log("✅ Connected to PostgreSQL database");
+    release();
   }
 });
 
-function initializeDatabase(client, release) {
-  const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS clients (
-      id SERIAL PRIMARY KEY,
-      full_name VARCHAR(255),
-      email VARCHAR(255),
-      phone VARCHAR(50),
-      location VARCHAR(255),
-      service_type VARCHAR(100),
-      price NUMERIC(10,2),
-      serial_number VARCHAR(100),
-      supporter VARCHAR(100),
-      has_bonus BOOLEAN DEFAULT FALSE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `;
-  client.query(createTableQuery, (err) => {
-    release();
-    if (err) {
-      console.error('❌ Error creating clients table:', err);
-    } else {
-      console.log('✅ Clients table ready');
-    }
-  });
-}
-
-// ================== API ROUTES ==================
-
-// GET clients with pagination
-app.get('/api/clients', async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const offset = (page - 1) * limit;
-
+// ✅ Ensure table exists
+const createTable = async () => {
   try {
-    const countResult = await pool.query('SELECT COUNT(*) AS total FROM clients');
-    const total = parseInt(countResult.rows[0].total);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        phone VARCHAR(50),
+        location VARCHAR(255),
+        service_type VARCHAR(100),
+        serial_number VARCHAR(100),
+        price DECIMAL(10,2),
+        supporter VARCHAR(255),
+        has_bonus BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("✅ Clients table ready");
+  } catch (err) {
+    console.error("❌ Error creating table:", err);
+  }
+};
+createTable();
 
-    const dataResult = await pool.query(
-      'SELECT * FROM clients ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+// ✅ ROUTES
+
+// Get all clients (with pagination)
+app.get("/api/clients", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const offset = (page - 1) * limit;
+
+    const result = await pool.query(
+      "SELECT * FROM clients ORDER BY created_at DESC LIMIT $1 OFFSET $2",
       [limit, offset]
     );
 
+    const totalCount = await pool.query("SELECT COUNT(*) FROM clients");
+    const totalClients = parseInt(totalCount.rows[0].count);
+    const totalPages = Math.ceil(totalClients / limit);
+
     res.json({
-      data: dataResult.rows,
+      data: result.rows,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      totalClients: total,
+      totalPages,
+      totalClients,
     });
   } catch (err) {
-    console.error('❌ Error fetching clients:', err);
-    res.status(500).json({ error: 'Failed to fetch clients' });
+    console.error("❌ Error fetching clients:", err.message);
+    res.status(500).json({ error: "Failed to fetch clients" });
   }
 });
 
-// POST add client
-app.post('/api/clients', async (req, res) => {
-  const { full_name, email, phone, location, service_type, price, serial_number, supporter, has_bonus } = req.body;
-
+// Get single client
+app.get("/api/clients/:id", async (req, res) => {
   try {
-    const countResult = await pool.query('SELECT COUNT(*) AS total FROM clients');
-    const totalClients = parseInt(countResult.rows[0].total);
-    if (totalClients >= MAX_CLIENTS) {
-      return res.status(400).json({ error: `Client limit of ${MAX_CLIENTS} reached.` });
+    const { id } = req.params;
+    const result = await pool.query("SELECT * FROM clients WHERE id = $1", [
+      id,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("❌ Error fetching client:", err.message);
+    res.status(500).json({ error: "Failed to fetch client" });
+  }
+});
+
+// Create client
+app.post("/api/clients", async (req, res) => {
+  try {
+    const {
+      full_name,
+      email,
+      phone,
+      location,
+      service_type,
+      serial_number,
+      price,
+      supporter,
+      has_bonus,
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      INSERT INTO clients 
+      (full_name, email, phone, location, service_type, serial_number, price, supporter, has_bonus)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *;
+    `,
+      [
+        full_name,
+        email,
+        phone,
+        location,
+        service_type,
+        serial_number,
+        price,
+        supporter,
+        has_bonus,
+      ]
+    );
+
+    res.json({
+      message: "✅ Client added successfully",
+      client: result.rows[0],
+    });
+  } catch (err) {
+    console.error("❌ Error adding client:", err.message);
+    res.status(500).json({ error: "Failed to add client" });
+  }
+});
+
+// Update client
+app.put("/api/clients/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      full_name,
+      email,
+      phone,
+      location,
+      service_type,
+      serial_number,
+      price,
+      supporter,
+      has_bonus,
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE clients SET
+        full_name=$1,
+        email=$2,
+        phone=$3,
+        location=$4,
+        service_type=$5,
+        serial_number=$6,
+        price=$7,
+        supporter=$8,
+        has_bonus=$9,
+        updated_at=NOW()
+      WHERE id=$10 RETURNING *;
+    `,
+      [
+        full_name,
+        email,
+        phone,
+        location,
+        service_type,
+        serial_number,
+        price,
+        supporter,
+        has_bonus,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Client not found" });
     }
 
-    const parsedPrice = isNaN(parseFloat(price)) ? null : parseFloat(price);
-    const parsedBonus = has_bonus === true || has_bonus === 'true';
-
-    const insertQuery = `
-      INSERT INTO clients (
-        full_name, email, phone, location,
-        service_type, price, serial_number,
-        supporter, has_bonus
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id;
-    `;
-
-    const insertValues = [full_name || null, email || null, phone || null, location || null, service_type || null, parsedPrice, serial_number || null, supporter || null, parsedBonus];
-
-    const result = await pool.query(insertQuery, insertValues);
-    res.status(201).json({ id: result.rows[0].id, message: 'Client created successfully' });
+    res.json({
+      message: "✅ Client updated successfully",
+      client: result.rows[0],
+    });
   } catch (err) {
-    console.error('❌ Error inserting client:', err);
-    res.status(500).json({ error: 'Failed to create client' });
+    console.error("❌ Error updating client:", err.message);
+    res.status(500).json({ error: "Failed to update client" });
   }
 });
 
-// PUT update client
-app.put('/api/clients/:id', async (req, res) => {
-  const id = req.params.id;
-  const { full_name, email, phone, location, service_type, price, serial_number, supporter, has_bonus } = req.body;
-
+// Delete client
+app.delete("/api/clients/:id", async (req, res) => {
   try {
-    const parsedPrice = isNaN(parseFloat(price)) ? null : parseFloat(price);
-    const parsedBonus = has_bonus === true || has_bonus === 'true';
-
-    const updateQuery = `
-      UPDATE clients SET
-        full_name = $1, email = $2, phone = $3, location = $4,
-        service_type = $5, price = $6, serial_number = $7,
-        supporter = $8, has_bonus = $9, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $10
-    `;
-
-    const updateValues = [full_name || null, email || null, phone || null, location || null, service_type || null, parsedPrice, serial_number || null, supporter || null, parsedBonus, id];
-
-    const result = await pool.query(updateQuery, updateValues);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Client not found' });
-
-    res.json({ message: 'Client updated successfully' });
-  } catch (err) {
-    console.error('❌ Error updating client:', err);
-    res.status(500).json({ error: 'Failed to update client' });
-  }
-});
-
-// DELETE client
-app.delete('/api/clients/:id', async (req, res) => {
-  const id = req.params.id;
-  try {
-    const result = await pool.query('DELETE FROM clients WHERE id = $1', [id]);
-    if (result.rowCount === 0) return res.status(404).json({ error: 'Client not found' });
-    res.json({ message: 'Client deleted successfully' });
-  } catch (err) {
-    console.error('❌ Error deleting client:', err);
-    res.status(500).json({ error: 'Failed to delete client' });
-  }
-});
-
-// GET reminders
-app.get('/api/reminders', async (req, res) => {
-  const query = `
-    SELECT full_name, created_at
-    FROM clients
-    WHERE MOD(EXTRACT(DAY FROM (CURRENT_DATE - created_at)), 28) = 0
-      AND CURRENT_DATE > created_at
-  `;
-
-  try {
-    const result = await pool.query(query);
-    const reminders = result.rows.map(client =>
-      `Reminder: Client ${client.full_name}'s subscription is nearing renewal. Registered on ${client.created_at.toISOString().slice(0, 10)}`
+    const { id } = req.params;
+    const result = await pool.query(
+      "DELETE FROM clients WHERE id=$1 RETURNING *",
+      [id]
     );
-    res.json({ reminders });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    res.json({
+      message: "✅ Client deleted successfully",
+      client: result.rows[0],
+    });
   } catch (err) {
-    console.error('❌ Error fetching reminders:', err);
-    res.status(500).json({ error: 'Database error' });
+    console.error("❌ Error deleting client:", err.message);
+    res.status(500).json({ error: "Failed to delete client" });
   }
 });
 
-// Serve React frontend
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+// Health Check
+app.get("/api/health", (req, res) => {
+  res.json({
+    message: "✅ Smart Broadband Server is running!",
+    timestamp: new Date().toISOString(),
   });
-}
+});
 
-// Start server
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\nServer shutting down gracefully...');
-  pool.end(err => {
-    if (err) console.error('❌ Error closing database connection:', err);
-    else console.log('✅ Database connection closed.');
-    process.exit(0);
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Allowed Origins:`, allowedOrigins);
+  console.log(
+    `🗄️  Database: ${process.env.DATABASE_URL ? "Connected" : "Not configured"}`
+  );
 });
 
 
