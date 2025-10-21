@@ -1,77 +1,222 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Create({ setView, editClientId }) {
-  const apiUrl = process.env.REACT_APP_API_URL;
+const Create = () => {
+  const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    full_name: '', email: '', phone: '', location: '',
-    service_type: '', price: '', serial_number: '',
-    supporter: '', has_bonus: false
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    location: "",
+    service_type: "",
+    serial_number: "",
+    price: "",
+    supporter: "",
+    has_bonus: false,
   });
 
-  useEffect(() => {
-    if (editClientId) {
-      axios.get(`${apiUrl}/api/clients?page=1&limit=1000`)
-        .then(res => {
-          const client = res.data.data.find(c => c.id === editClientId);
-          if (client) setForm(client);
-        }).catch(console.error);
-    }
-  }, [editClientId]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const handleChange = e => {
+  const API_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL;
+
+  const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage("");
+
     try {
-      if (editClientId) {
-        await axios.put(`${apiUrl}/api/clients/${editClientId}`, form);
-      } else {
-        await axios.post(`${apiUrl}/api/clients`, form);
-      }
-      setView('clients');
+      const response = await fetch(`${API_URL}/api/clients`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error("Failed to add client");
+
+      setMessage("✅ Client added successfully!");
+      setTimeout(() => navigate("/smart"), 1200);
     } catch (err) {
-      console.error(err);
+      console.error("Error adding client:", err);
+      setMessage("❌ Failed to save client. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const isStarlink = formData.service_type.toLowerCase().includes("starlink");
 
   return (
-    <form className="left-form" onSubmit={handleSubmit}>
-      <label>Full Name
-        <input name="full_name" value={form.full_name} onChange={handleChange} required />
-      </label>
-      <label>Email
-        <input name="email" value={form.email} onChange={handleChange} />
-      </label>
-      <label>Phone
-        <input name="phone" value={form.phone} onChange={handleChange} />
-      </label>
-      <label>Location
-        <input name="location" value={form.location} onChange={handleChange} />
-      </label>
-      <label>Service Type
-        <input name="service_type" value={form.service_type} onChange={handleChange} />
-      </label>
-      <label>Price
-        <input name="price" type="number" value={form.price} onChange={handleChange} />
-      </label>
-      <label>Serial Number
-        <input name="serial_number" value={form.serial_number} onChange={handleChange} />
-      </label>
-      <label>Supporter
-        <input name="supporter" value={form.supporter} onChange={handleChange} />
-      </label>
-      <label>Has Bonus
-        <input type="checkbox" name="has_bonus" checked={form.has_bonus} onChange={handleChange} />
-      </label>
-      <button type="submit" className="add-client-btn">{editClientId ? 'Update Client' : 'Add Client'}</button>
-    </form>
+    <div style={styles.container}>
+      <h2 style={styles.title}>➕ Add New Client</h2>
+
+      <form style={styles.form} onSubmit={handleSubmit}>
+        <div style={styles.formGroup}>
+          <label>Full Name</label>
+          <input
+            type="text"
+            name="full_name"
+            value={formData.full_name}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label>Phone</label>
+          <input
+            type="text"
+            name="phone"
+            value={formData.phone}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label>Location</label>
+          <input
+            type="text"
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label>Service Type</label>
+          <select
+            name="service_type"
+            value={formData.service_type}
+            onChange={handleChange}
+            required
+          >
+            <option value="">-- Select Service Type --</option>
+            <option value="4G">4G</option>
+            <option value="Starlink Standard">Starlink Standard</option>
+            <option value="Starlink Mini">Starlink Mini</option>
+          </select>
+        </div>
+
+        {isStarlink && (
+          <div style={styles.formGroup}>
+            <label>Serial Number</label>
+            <input
+              type="text"
+              name="serial_number"
+              value={formData.serial_number}
+              onChange={handleChange}
+            />
+          </div>
+        )}
+
+        <div style={styles.formGroup}>
+          <label>Price (RWF)</label>
+          <input
+            type="number"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label>Supporter</label>
+          <input
+            type="text"
+            name="supporter"
+            value={formData.supporter}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div style={{ ...styles.formGroup, flexDirection: "row", alignItems: "center" }}>
+          <input
+            type="checkbox"
+            name="has_bonus"
+            checked={formData.has_bonus}
+            onChange={handleChange}
+          />
+          <label style={{ marginLeft: "8px" }}>Has Bonus</label>
+        </div>
+
+        <button type="submit" style={styles.submitBtn} disabled={loading}>
+          {loading ? "Saving..." : "Save Client"}
+        </button>
+
+        {message && <p style={styles.message}>{message}</p>}
+      </form>
+    </div>
   );
-}
+};
+
+const styles = {
+  container: {
+    maxWidth: "600px",
+    margin: "40px auto",
+    backgroundColor: "#fff",
+    borderRadius: "16px",
+    padding: "25px",
+    boxShadow: "0 0 15px rgba(0,0,0,0.1)",
+  },
+  title: {
+    textAlign: "center",
+    color: "#003366",
+    marginBottom: "25px",
+    fontSize: "1.6rem",
+    fontWeight: "bold",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "18px",
+  },
+  formGroup: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  submitBtn: {
+    backgroundColor: "#0066cc",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    padding: "12px",
+    fontSize: "1rem",
+    fontWeight: "500",
+    cursor: "pointer",
+    marginTop: "10px",
+  },
+  message: {
+    textAlign: "center",
+    marginTop: "15px",
+    fontWeight: "500",
+    color: "#333",
+  },
+};
+
+export default Create;
+
+
 
 
 
