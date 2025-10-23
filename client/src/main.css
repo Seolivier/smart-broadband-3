@@ -1,0 +1,217 @@
+/* main.css */
+
+/* Remove max-width and centering from container */
+.container {
+  width: 100%;       /* full width of viewport */
+  margin: 0;         /* no centering */
+  padding: 2rem 2rem 2rem 2rem; /* keep padding */
+  font-family: sans-serif;
+}
+
+/* flex container for form and others */
+.flex-container {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: flex-start; /* align children to left */
+}
+
+/* Minimal style on form only */
+.left-form {
+  flex: 1 1 300px;
+  max-width: 350px;
+  background: #fafafa;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: none; /* no shadow for minimal */
+  border: 1px solid #ddd;
+  /* Keep as is */
+}
+
+.left-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.left-form input,
+.left-form select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+  background-color: white;
+}
+
+/* Add Client button */
+.left-form button.add-client-btn {
+  margin-top: 1rem;
+  padding: 0.6rem;
+  border: none;
+  background-color: #28a745; /* green */
+  color: white;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.left-form button.add-client-btn:hover {
+  background-color: #218838;
+}
+
+/* Table styling more solid and traditional */
+.client-list {
+  flex: 1 1 600px;
+  width: 100%; /* full width of container */
+  /* Make sure it stretches full width */
+  margin-left: 0; /* remove any left margin */
+}
+
+/* Make sure the table uses full width of viewport */
+.client-list table {
+  width: 100vw; /* full viewport width */
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  background: white;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  border: 1px solid #ccc;
+  /* Remove left padding/margin */
+  margin-left: 0;
+}
+
+/* Table cells */
+.client-list th,
+.client-list td {
+  padding: 0.75rem;
+  text-align: left;
+  border: 1px solid #ccc;
+}
+
+.client-list th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.client-list .no-data {
+  text-align: center;
+  color: #777;
+  padding: 1rem;
+}
+
+/* Buttons and alerts */
+.toggle-buttons {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start; /* left align */
+}
+
+/* Clients toggle buttons */
+.toggle-buttons button.clients-btn {
+  padding: 0.5rem 1rem;
+  background-color: #007bff; /* blue */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-buttons button.clients-btn:hover {
+  background-color: #0056b3;
+}
+
+.toggle-buttons button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Edit button in table */
+.client-list button.edit-btn {
+  background-color: #ffc107; /* amber */
+  color: black;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.client-list button.edit-btn:hover {
+  background-color: #e0a800;
+}
+
+/* Delete button in table */
+.client-list button.delete-btn {
+  background-color: #dc3545; /* red */
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.client-list button.delete-btn:hover {
+  background-color: #c82333;
+}
+
+/* Alert */
+.alert {
+  background: #fdd;
+  padding: 1rem;
+  color: #900;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: flex-start; /* left aligned */
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pagination button {
+  padding: 0.5rem 1rem;
+  background-color: #eee;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.pagination button:disabled {
+  background-color: #ddd;
+  cursor: not-allowed;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
