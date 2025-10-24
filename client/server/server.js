@@ -2,8 +2,6 @@ import express from "express";
 import cors from "cors";
 import pkg from "pg";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
@@ -11,9 +9,7 @@ const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ===============================
-// 🟢 CORS Configuration
-// ===============================
+// ✅ CORS Configuration
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -35,9 +31,7 @@ app.use(
 
 app.use(express.json());
 
-// ===============================
-// 🗄️ PostgreSQL Connection
-// ===============================
+// PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -78,9 +72,7 @@ const createTable = async () => {
 };
 createTable();
 
-// ===============================
-// 🛠️ API ROUTES
-// ===============================
+// ROUTES
 
 // Get all clients with pagination
 app.get("/api/clients", async (req, res) => {
@@ -197,27 +189,12 @@ app.get("/api/health", (req, res) => {
   res.json({ message: "✅ Smart Broadband Server is running!", timestamp: new Date().toISOString() });
 });
 
-// ===============================
-// 🌐 Serve React Frontend (Fullstack)
-// ===============================
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-app.use(express.static(path.join(__dirname, "../client/build")));
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/build/index.html"));
-});
-
-// ===============================
-// 🚀 Start Server
-// ===============================
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log("🌐 Allowed Origins:", allowedOrigins);
   console.log(`🗄️  Database: ${process.env.DATABASE_URL ? "Connected" : "Not configured"}`);
 });
-
 
 
 

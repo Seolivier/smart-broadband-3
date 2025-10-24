@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Smart = () => {
   const [clients, setClients] = useState([]);
@@ -8,46 +8,51 @@ const Smart = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL =
+  import.meta.env.MODE === "production"
+    ? import.meta.env.VITE_API_URL_PROD
+    : import.meta.env.VITE_API_URL;
 
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const res = await fetch(`${API_URL}/api/clients?page=${currentPage}`);
-      if (!res.ok) throw new Error("Failed to fetch clients");
-      const data = await res.json();
-      setClients(data.data || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (err) {
-      console.error("Error fetching clients:", err);
-      setError("Unable to load client list. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const navigate = useNavigate();
 
-  const deleteClient = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this client?")) return;
-    try {
-      const res = await fetch(`${API_URL}/api/clients/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete client");
-      fetchClients(); // Refresh table
-    } catch (err) {
-      console.error("Error deleting client:", err);
-      alert("Failed to delete client.");
-    }
+  const fetchClients = () => {
+    setLoading(true);
+    fetch(`${API_URL}/api/clients?page=${currentPage}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setClients(data.data || []);
+        setTotalPages(data.totalPages || 1);
+      })
+      .catch((err) => {
+        console.error("Error fetching clients:", err);
+        setError("Unable to load client list. Please try again later.");
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchClients();
   }, [currentPage]);
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this client?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/clients/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      alert(data.message);
+      fetchClients();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete client.");
+    }
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>📋 Smart Broadband Clients</h1>
 
       <div style={styles.actions}>
+        <button onClick={() => navigate("/")} style={styles.dashboardBtn}>🏠 Dashboard</button>
         <Link to="/create" style={styles.addButton}>+ Add New Client</Link>
       </div>
 
@@ -59,54 +64,52 @@ const Smart = () => {
         <p style={styles.message}>No clients found.</p>
       ) : (
         <>
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={{ ...styles.th, width: "50px" }}>ID</th>
-                  <th style={{ ...styles.th, width: "160px" }}>Full Name</th>
-                  <th style={{ ...styles.th, width: "180px" }}>Email</th>
-                  <th style={{ ...styles.th, width: "120px" }}>Phone</th>
-                  <th style={{ ...styles.th, width: "140px" }}>Location</th>
-                  <th style={{ ...styles.th, width: "120px" }}>Service Type</th>
-                  <th style={{ ...styles.th, width: "120px" }}>Serial</th>
-                  <th style={{ ...styles.th, width: "100px" }}>Price</th>
-                  <th style={{ ...styles.th, width: "120px" }}>Supporter</th>
-                  <th style={{ ...styles.th, width: "70px" }}>Bonus</th>
-                  <th style={{ ...styles.th, width: "120px" }}>Created</th>
-                  <th style={{ ...styles.th, width: "180px" }}>Actions</th>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Location</th>
+                <th>Service Type</th>
+                <th>Serial Number</th>
+                <th>Price</th>
+                <th>Supporter</th>
+                <th>Bonus</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((client, index) => (
+                <tr
+                  key={client.id}
+                  style={{
+                    backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#ffffff",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <td>{client.id}</td>
+                  <td>{client.full_name}</td>
+                  <td>{client.email}</td>
+                  <td>{client.phone}</td>
+                  <td>{client.location}</td>
+                  <td>{client.service_type}</td>
+                  <td>{client.serial_number || "-"}</td>
+                  <td>{Number(client.price).toLocaleString()}</td>
+                  <td>{client.supporter}</td>
+                  <td>{client.has_bonus ? "✅" : "❌"}</td>
+                  <td>{new Date(client.created_at).toLocaleDateString()}</td>
+                  <td style={styles.actionsCell}>
+                    <Link to={`/read/${client.id}`} style={styles.readBtn}>View</Link>
+                    <Link to={`/edit/${client.id}`} style={styles.editBtn}>Edit</Link>
+                    <button style={styles.deleteBtn} onClick={() => handleDelete(client.id)}>Delete</button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {clients.map((c, i) => (
-                  <tr
-                    key={c.id}
-                    style={{
-                      ...styles.row,
-                      backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb",
-                    }}
-                  >
-                    <td style={styles.td}>{c.id}</td>
-                    <td style={styles.td}>{c.full_name}</td>
-                    <td style={styles.td}>{c.email}</td>
-                    <td style={styles.td}>{c.phone}</td>
-                    <td style={styles.td}>{c.location}</td>
-                    <td style={styles.td}>{c.service_type}</td>
-                    <td style={styles.td}>{c.serial_number || "-"}</td>
-                    <td style={styles.td}>{Number(c.price).toLocaleString()}</td>
-                    <td style={styles.td}>{c.supporter}</td>
-                    <td style={styles.td}>{c.has_bonus ? "✅" : "❌"}</td>
-                    <td style={styles.td}>{new Date(c.created_at).toLocaleDateString()}</td>
-                    <td style={styles.actionsCell}>
-                      <Link to={`/read/${c.id}`} style={styles.readBtn}>View</Link>
-                      <Link to={`/edit/${c.id}`} style={styles.editBtn}>Edit</Link>
-                      <button onClick={() => deleteClient(c.id)} style={styles.deleteBtn}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
 
           <div style={styles.pagination}>
             <button
@@ -116,9 +119,11 @@ const Smart = () => {
             >
               ◀ Prev
             </button>
+
             <span style={styles.pageInfo}>
               Page {currentPage} of {totalPages}
             </span>
+
             <button
               style={styles.pageButton}
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
@@ -136,86 +141,106 @@ const Smart = () => {
 const styles = {
   container: {
     maxWidth: "95%",
-    margin: "30px auto",
-    backgroundColor: "#f8f9fa",
-    borderRadius: "12px",
+    margin: "40px auto",
+    backgroundColor: "#fff",
+    borderRadius: "16px",
     padding: "20px",
-    boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    boxShadow: "0 0 15px rgba(0,0,0,0.1)",
   },
   title: {
     textAlign: "center",
     color: "#003366",
-    marginBottom: "20px",
-    fontSize: "1.5rem",
-    fontWeight: "700",
+    marginBottom: "25px",
+    fontSize: "1.8rem",
+    fontWeight: "bold",
   },
-  actions: { display: "flex", justifyContent: "flex-end", marginBottom: "15px" },
+  actions: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "15px",
+    gap: "10px",
+  },
   addButton: {
     backgroundColor: "#0066cc",
     color: "white",
-    padding: "8px 14px",
+    padding: "10px 18px",
     textDecoration: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     fontWeight: "500",
-    fontSize: "0.9rem",
-    transition: "0.3s",
+    transition: "0.2s",
   },
-  message: { textAlign: "center", color: "#555", fontSize: "0.9rem", marginTop: "20px" },
-  tableWrapper: { overflowX: "auto" },
+  dashboardBtn: {
+    backgroundColor: "#555",
+    color: "white",
+    padding: "10px 18px",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+  message: {
+    textAlign: "center",
+    color: "#555",
+    fontSize: "1rem",
+    marginTop: "30px",
+  },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    minWidth: "1200px",
-    fontSize: "0.85rem",
-  },
-  th: {
     textAlign: "left",
-    padding: "10px 8px",
-    fontWeight: "600",
-    borderBottom: "2px solid #ccc",
-    backgroundColor: "#f0f4f8",
-    position: "sticky",
-    top: 0,
-    zIndex: 2,
+    border: "1px solid #999",
   },
-  td: {
-    padding: "10px 8px",
-    borderBottom: "1px solid #eee",
+  actionsCell: {
+    display: "flex",
+    gap: "5px",
   },
-  row: {
-    transition: "background-color 0.2s",
-    cursor: "default",
+  readBtn: {
+    color: "#0055cc",
+    textDecoration: "none",
+    fontWeight: "bold",
   },
-  actionsCell: { display: "flex", gap: "6px" },
-  readBtn: { color: "#0055cc", textDecoration: "none", fontWeight: "500", fontSize: "0.85rem" },
-  editBtn: { color: "#009933", textDecoration: "none", fontWeight: "500", fontSize: "0.85rem" },
+  editBtn: {
+    color: "#009933",
+    textDecoration: "none",
+    fontWeight: "bold",
+  },
   deleteBtn: {
     color: "#cc0000",
-    backgroundColor: "#ffeaea",
-    border: "1px solid #cc0000",
-    borderRadius: "5px",
-    padding: "4px 8px",
-    fontSize: "0.8rem",
+    border: "none",
+    background: "none",
     cursor: "pointer",
+    fontWeight: "bold",
   },
   pagination: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: "18px",
-    gap: "10px",
+    marginTop: "20px",
+    gap: "12px",
   },
   pageButton: {
-    padding: "6px 12px",
+    padding: "8px 14px",
     border: "1px solid #ccc",
-    borderRadius: "5px",
-    backgroundColor: "#f4f4f4",
+    borderRadius: "6px",
+    backgroundColor: "#f8f8f8",
     cursor: "pointer",
-    fontSize: "0.85rem",
   },
-  pageInfo: { fontSize: "0.85rem", color: "#333" },
+  pageInfo: {
+    fontSize: "0.95rem",
+    color: "#333",
+  },
 };
+
+// Add border for all table cells
+const tableStyleSheet = document.createElement("style");
+tableStyleSheet.innerHTML = `
+  table, th, td {
+    border: 1px solid #999 !important;
+  }
+  th, td {
+    padding: 8px;
+  }
+`;
+document.head.appendChild(tableStyleSheet);
 
 export default Smart;
 
